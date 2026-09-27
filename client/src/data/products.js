@@ -1,0 +1,48 @@
+export const products = [
+  {
+    id: 'aurora-headphones',
+    name: 'Aurora Wireless Headphones',
+    category: 'Audio',
+    price: 129.99,
+    discount: 15,
+    rating: 4.8,
+    stock: 18,
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80',
+    description: 'Immersive over-ear sound with comfortable memory foam and all-day battery life.',
+  },
+  {
+    id: 'orbit-watch',
+    name: 'Orbit Smart Watch',
+    category: 'Wearables',
+    price: 189.99,
+    discount: 10,
+    rating: 4.6,
+    stock: 11,
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80',
+    description: 'A focused everyday companion for activity tracking, notifications, and wellness.',
+  },
+  {
+    id: 'lumen-lamp',
+    name: 'Lumen Desk Lamp',
+    category: 'Workspace',
+    price: 74.99,
+    discount: 20,
+    rating: 4.7,
+    stock: 26,
+    image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=80',
+    description: 'Adjustable warm-to-cool lighting designed to make focused work feel effortless.',
+  },
+  {
+    id: 'terra-backpack',
+    name: 'Terra Everyday Backpack',
+    category: 'Travel',
+    price: 89.99,
+    discount: 12,
+    rating: 4.9,
+    stock: 9,
+    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80',
+    description: 'A durable, organized carry-all for commutes, weekend trips, and daily essentials.',
+  },
+]
+
+export const categories = ['Audio', 'Wearables', 'Workspace', 'Travel']
