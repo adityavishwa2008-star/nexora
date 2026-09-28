@@ -1,6 +1,15 @@
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/auth'
 
 function Navbar() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/')
+  }
+
   return (
     <header className="site-header">
       <div className="container navbar">
@@ -14,8 +23,17 @@ function Navbar() {
           <NavLink to="/cart">Cart</NavLink>
         </nav>
         <div className="auth-links">
-          <Link to="/login">Log in</Link>
-          <Link className="button button-small" to="/register">Join NEXORA</Link>
+          {user ? (
+            <>
+              <span className="user-greeting">{user.name}</span>
+              <button className="button button-small" type="button" onClick={handleLogout}>Log out</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Log in</Link>
+              <Link className="button button-small" to="/register">Join NEXORA</Link>
+            </>
+          )}
         </div>
       </div>
     </header>

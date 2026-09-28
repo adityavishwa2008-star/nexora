@@ -1,8 +1,32 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../api/axios'
 import ProductCard from '../components/ProductCard'
-import { categories, products } from '../data/products'
 
 function Home() {
+  const [categories, setCategories] = useState([])
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    Promise.all([
+      api.get('/products/categories'),
+      api.get('/products', { params: { limit: 3, sort: 'rating' } }),
+    ])
+      .then(([categoryResponse, productResponse]) => {
+        if (!active) return
+        setCategories(categoryResponse.data)
+        setProducts(productResponse.data.products)
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.response?.data?.message || 'Unable to load the collection.')
+      })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
   return (
     <>
       <section className="hero-section">
@@ -29,7 +53,7 @@ function Home() {
         </div>
         <div className="category-grid">
           {categories.map((category, index) => (
-            <Link className="category-card" to={`/shop?category=${category}`} key={category}>
+            <Link className="category-card" to={`/shop?category=${encodeURIComponent(category)}`} key={category}>
               <span>0{index + 1}</span>
               <strong>{category}</strong>
             </Link>
@@ -44,9 +68,9 @@ function Home() {
             <h2>Featured products</h2>
           </div>
         </div>
-        <div className="product-grid">
-          {products.slice(0, 3).map((product) => <ProductCard product={product} key={product.id} />)}
-        </div>
+        {loading ? <p className="status-message" role="status">Loading products…</p> : error ? <p className="form-error" role="alert">{error}</p> : products.length ? (
+          <div className="product-grid">{products.map((product) => <ProductCard product={product} key={product._id} />)}</div>
+        ) : <p className="status-message">No products are available yet.</p>}
       </section>
 
       <section className="benefits-band">
