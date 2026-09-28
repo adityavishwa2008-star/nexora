@@ -1,0 +1,1 @@
+export { suggestProducts as suggestSearch } from './productController.js';

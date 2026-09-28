@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import ProductCard from '../components/ProductCard'
+import { ProductGridSkeleton } from '../components/ui'
 
 function Home() {
   const [categories, setCategories] = useState([])
@@ -53,9 +54,9 @@ function Home() {
         </div>
         <div className="category-grid">
           {categories.map((category, index) => (
-            <Link className="category-card" to={`/shop?category=${encodeURIComponent(category)}`} key={category}>
+            <Link className="category-card" to={`/c/${category.slug}`} key={category._id}>
               <span>0{index + 1}</span>
-              <strong>{category}</strong>
+              <strong>{category.name}</strong>
             </Link>
           ))}
         </div>
@@ -68,7 +69,7 @@ function Home() {
             <h2>Featured products</h2>
           </div>
         </div>
-        {loading ? <p className="status-message" role="status">Loading products…</p> : error ? <p className="form-error" role="alert">{error}</p> : products.length ? (
+        {loading ? <ProductGridSkeleton count={3} /> : error ? <p className="form-error" role="alert">{error}</p> : products.length ? (
           <div className="product-grid">{products.map((product) => <ProductCard product={product} key={product._id} />)}</div>
         ) : <p className="status-message">No products are available yet.</p>}
       </section>
