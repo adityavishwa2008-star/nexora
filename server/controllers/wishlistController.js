@@ -1,0 +1,6 @@
+import Wishlist from '../models/Wishlist.js';
+
+const populated = (id) => Wishlist.findOne({ user: id }).populate('products', 'name price discountPrice images stock category rating numReviews');
+export const getWishlist = async (req, res, next) => { try { res.json(await populated(req.user._id) || { user: req.user._id, products: [] }); } catch (error) { next(error); } };
+export const addWishlist = async (req, res, next) => { try { const result = await Wishlist.findOneAndUpdate({ user: req.user._id }, { $addToSet: { products: req.params.productId }, $setOnInsert: { user: req.user._id } }, { upsert: true, new: true, runValidators: true }); res.status(201).json(await result.populate('products', 'name price discountPrice images stock category rating numReviews')); } catch (error) { next(error); } };
+export const removeWishlist = async (req, res, next) => { try { await Wishlist.updateOne({ user: req.user._id }, { $pull: { products: req.params.productId } }); res.json(await populated(req.user._id) || { products: [] }); } catch (error) { next(error); } };

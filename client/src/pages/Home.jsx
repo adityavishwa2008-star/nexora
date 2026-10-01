@@ -3,17 +3,26 @@ import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import ProductCard from '../components/ProductCard'
 import { ProductGridSkeleton } from '../components/ui'
+import { imageDimensionsByPath } from '../data/products'
+
+const heroImage = '/images/products/layered-cross-chain.jpg'
+const categoryImageAlt = {
+  belts: 'Gothic Cross Buckle Leather Belt',
+  'chains-necklaces': 'Silver Cross Pendant Ball Chain',
+  'retro-tech': 'Retro Silver MP3 Player with Earbuds',
+}
 
 function Home() {
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const heroDimensions = imageDimensionsByPath[heroImage]
 
   useEffect(() => {
     let active = true
     Promise.all([
-      api.get('/products/categories'),
+      api.get('/categories'),
       api.get('/products', { params: { limit: 3, sort: 'rating' } }),
     ])
       .then(([categoryResponse, productResponse]) => {
@@ -31,17 +40,18 @@ function Home() {
   return (
     <>
       <section className="hero-section">
-        <div className="container hero-content">
-          <p className="eyebrow">The NEXORA edit / 01</p>
-          <h1>Useful things, beautifully considered.</h1>
-          <p className="hero-copy">Discover a focused collection of everyday technology and objects designed to earn their place in your life.</p>
-          <Link className="button" to="/shop">Explore the collection</Link>
+        <div className="container hero-layout">
+          <div className="hero-content">
+            <p className="eyebrow">The NEXORA edit / 01</p>
+            <h1>Useful things, beautifully considered.</h1>
+            <p className="hero-copy">Everyday pieces with a little extra edge. Find your next rotation.</p>
+            <Link className="button" to="/shop">Explore the collection</Link>
+          </div>
+          <figure className="hero-image-card">
+            <img src={heroImage} alt="Layered Cross-Link Chain Set" width={heroDimensions.width} height={heroDimensions.height} loading="eager" style={{ objectPosition: '50% 80%', maxWidth: `${heroDimensions.width * 1.5}px` }} />
+            <figcaption><span>NEW ROTATION</span><strong>Layered Cross-Link Chain Set</strong></figcaption>
+          </figure>
         </div>
-        <div className="hero-orbit" aria-hidden="true">
-          <div className="orbit-core">NX</div>
-          <span className="orbit-label">EST. 2026</span>
-        </div>
-        <div className="hero-stamp" aria-hidden="true">N / 26</div>
       </section>
 
       <section className="container section-block">
@@ -55,6 +65,10 @@ function Home() {
         <div className="category-grid">
           {categories.map((category, index) => (
             <Link className="category-card" to={`/c/${category.slug}`} key={category._id}>
+              {category.image && (() => {
+                const dimensions = imageDimensionsByPath[category.image] || { width: 386, height: 518 }
+                return <img className="category-card-image" src={category.image} alt={categoryImageAlt[category.slug] || category.name} width={dimensions.width} height={dimensions.height} loading="lazy" style={{ maxWidth: `${dimensions.width * 1.5}px` }} />
+              })()}
               <span>0{index + 1}</span>
               <strong>{category.name}</strong>
             </Link>

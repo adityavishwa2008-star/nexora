@@ -17,6 +17,8 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Please add a product price'],
       min: [0, 'Price cannot be negative'],
     },
+    slug: { type: String, unique: true, sparse: true, trim: true, lowercase: true },
+    discountPrice: { type: Number, min: 0 },
     mrp: {
       type: Number,
       min: [0, 'MRP cannot be negative'],
@@ -72,12 +74,18 @@ const productSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    imageFocus: {
+      type: String,
+      default: '50% 50%',
+      trim: true,
+    },
     images: {
       type: [
         {
           type: String,
           validate: {
             validator: (value) => {
+              if (/^\/images\/products\/(?!.*\.\.\/)[\w-]+\.jpe?g$/i.test(value)) return true;
               try {
                 const url = new URL(value);
                 return url.protocol === 'http:' || url.protocol === 'https:';
@@ -103,6 +111,7 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isFeatured: { type: Boolean, default: false },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

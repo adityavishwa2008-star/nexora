@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { products } from '../../client/src/data/products.js';
+import { categories, products } from '../../client/src/data/products.js';
 import Category from '../models/Category.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
@@ -49,38 +49,38 @@ const seed = async () => {
       console.log('Admin user already exists; skipping creation.');
     }
 
-    const categoryNames = [...new Set(products.map((product) => product.category.trim()))];
-    const categories = await Promise.all(categoryNames.map(async (name, index) => {
-      const sourceProduct = products.find((product) => product.category.trim() === name);
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    await Category.updateMany({}, { $set: { active: false } });
+    const seededCategories = await Promise.all(categories.map(async (category) => {
       return Category.findOneAndUpdate(
-        { slug },
-        { $set: { name, image: sourceProduct?.image, order: index, active: true }, $setOnInsert: { slug, parent: null } },
+        { slug: category.slug },
+        { $set: { name: category.name, image: category.image, order: category.order, active: true }, $setOnInsert: { slug: category.slug, parent: null } },
         { returnDocument: 'after', upsert: true, runValidators: true }
       );
     }));
-    const categoryByName = new Map(categories.map((category) => [category.name.toLowerCase(), category._id]));
+    const categoryBySlug = new Map(seededCategories.map((category) => [category.slug, category._id]));
     const seededProducts = await Promise.all(products.map(async (product) => {
       const fields = {
         name: product.name,
         description: product.description,
         price: product.price,
-        mrp: product.discount ? Number((product.price / (1 - product.discount / 100)).toFixed(2)) : product.price,
-        stock: product.stock ?? 0,
+        mrp: product.mrp,
+        sold: 0,
+        stock: product.stock,
         category: product.category,
-        categoryRef: categoryByName.get(product.category.toLowerCase()),
+        categoryRef: categoryBySlug.get(product.category),
         brand: product.brand,
         colors: product.colors ?? [],
         sizes: product.sizes ?? [],
         images: product.image ? [product.image] : [],
-        rating: product.rating ?? 0,
+        imageFocus: product.imageFocus ?? '50% 50%',
+        rating: 0,
         numReviews: 0,
         featured: false,
         createdBy: adminUser._id,
       };
       return Product.findOneAndUpdate(
         { name: product.name },
-        { $set: fields, $setOnInsert: { sold: 0 } },
+        { $set: fields },
         { returnDocument: 'after', upsert: true, runValidators: true }
       );
     }));

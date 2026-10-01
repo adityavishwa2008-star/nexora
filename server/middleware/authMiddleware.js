@@ -40,3 +40,5 @@ export const admin = (req, res, next) => {
   res.status(403);
   throw new Error('Not authorized as admin');
 };
+
+export const adminOnly = admin;

@@ -4,8 +4,10 @@ import Product from '../models/Product.js';
 
 const writableFields = [
   'name',
+  'slug',
   'description',
   'price',
+  'discountPrice',
   'mrp',
   'stock',
   'category',
@@ -13,10 +15,12 @@ const writableFields = [
   'brand',
   'colors',
   'sizes',
+  'imageFocus',
   'freeDelivery',
   'drops',
   'images',
   'featured',
+  'isFeatured',
 ];
 
 const sortOptions = {
@@ -55,7 +59,7 @@ const validatePayload = (body, partial = false) => {
     return 'Name, description, price, and category are required';
   }
 
-  for (const field of ['name', 'description', 'category', 'brand']) {
+  for (const field of ['name', 'slug', 'description', 'category', 'brand']) {
     if (body[field] !== undefined && (typeof body[field] !== 'string' || !body[field].trim())) {
       return `${field} must be a non-empty string`;
     }
@@ -67,6 +71,10 @@ const validatePayload = (body, partial = false) => {
 
   if (body.mrp !== undefined && (typeof body.mrp !== 'number' || !Number.isFinite(body.mrp) || body.mrp < 0 || (body.price !== undefined && body.mrp < body.price))) {
     return 'MRP must be a number greater than or equal to price';
+  }
+
+  if (body.discountPrice !== undefined && (typeof body.discountPrice !== 'number' || !Number.isFinite(body.discountPrice) || body.discountPrice < 0 || (body.price !== undefined && body.discountPrice > body.price))) {
+    return 'Discount price must be a non-negative number no greater than price';
   }
 
   if (body.stock !== undefined && (!Number.isInteger(body.stock) || body.stock < 0)) {
@@ -83,6 +91,10 @@ const validatePayload = (body, partial = false) => {
     if (body[field] !== undefined && typeof body[field] !== 'boolean') return `${field} must be a boolean`;
   }
 
+  if (body.imageFocus !== undefined && (typeof body.imageFocus !== 'string' || !/^\d{1,3}%\s+\d{1,3}%$/.test(body.imageFocus.trim()))) {
+    return 'imageFocus must be a percentage pair such as 50% 50%';
+  }
+
   if (body.categoryRef !== undefined && body.categoryRef !== null && !/^[a-f\d]{24}$/i.test(body.categoryRef)) {
     return 'categoryRef must be a valid category id';
   }
@@ -90,6 +102,7 @@ const validatePayload = (body, partial = false) => {
   if (body.featured !== undefined && typeof body.featured !== 'boolean') {
     return 'Featured must be a boolean';
   }
+  if (body.isFeatured !== undefined && typeof body.isFeatured !== 'boolean') return 'isFeatured must be a boolean';
 
   if (body.images !== undefined) {
     if (!Array.isArray(body.images)) {
@@ -98,16 +111,20 @@ const validatePayload = (body, partial = false) => {
 
     for (const image of body.images) {
       if (typeof image !== 'string') {
-        return 'Images must contain only HTTP or HTTPS URLs';
+        return 'Images must be safe local product paths or HTTP or HTTPS URLs';
+      }
+
+      if (/^\/images\/products\/[\w-]+\.jpe?g$/i.test(image)) {
+        continue;
       }
 
       try {
         const url = new URL(image);
         if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-          return 'Images must contain only HTTP or HTTPS URLs';
+          return 'Images must be safe local product paths or HTTP or HTTPS URLs';
         }
       } catch {
-        return 'Images must contain only HTTP or HTTPS URLs';
+        return 'Images must be safe local product paths or HTTP or HTTPS URLs';
       }
     }
   }
@@ -338,12 +355,15 @@ export const suggestProducts = async (req, res, next) => {
 };
 
 export const getProductCategories = async (req, res, next) => {
-  try {
-    const categories = await Product.distinct('category');
-    res.json(categories.sort());
-  } catch (error) {
-    next(error);
-  }
+  try { const categories = await Product.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }, { $sort: { _id: 1 } }]); res.json(categories.map((item) => ({ name: item._id, count: item.count }))); } catch (error) { next(error); }
+};
+
+export const getFeaturedProducts = async (req, res, next) => {
+  try { res.json(await Product.find({ $or: [{ isFeatured: true }, { featured: true }] }).sort({ createdAt: -1 }).limit(Math.min(Number(req.query.limit) || 8, 50))); } catch (error) { next(error); }
+};
+
+export const getProductBySlug = async (req, res, next) => {
+  try { const product = await Product.findOne({ slug: req.params.slug }); if (!product) { res.status(404); throw new Error('Product not found'); } res.json(product); } catch (error) { handleError(error, res, next); }
 };
 
 export const getProductById = async (req, res, next) => {

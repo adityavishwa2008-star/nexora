@@ -30,7 +30,7 @@ function Login() {
     setSubmitting(true)
     try {
       await login({ email: values.email.trim(), password: values.password })
-      navigate(location.state?.from?.pathname || '/', { replace: true })
+      navigate(location.state?.from ? `${location.state.from.pathname}${location.state.from.search || ''}${location.state.from.hash || ''}` : '/', { replace: true })
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to sign in. Please try again.')
     } finally {

@@ -26,6 +26,8 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    phone: { type: String, trim: true, default: '' },
+    addresses: [{ name: String, phone: String, line1: String, city: String, state: String, pincode: String, isDefault: { type: Boolean, default: false } }],
   },
   {
     timestamps: true,

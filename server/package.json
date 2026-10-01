@@ -8,6 +8,10 @@
     "start": "node server.js",
     "seed": "node seeds/seed.js",
     "seed:destroy": "node seeds/seed.js --destroy"
+    ,"test:cart": "node test-cart.js"
+    ,"test:orders": "node test-orders.js"
+    ,"test:admin": "node test-admin.js"
+    ,"test:reviews": "node test-reviews.js"
   },
   "keywords": [],
   "author": "",
@@ -19,7 +23,8 @@
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.10.2"
+    "mongoose": "^9.10.2",
+    "razorpay": "^2.9.8"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

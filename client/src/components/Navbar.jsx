@@ -4,19 +4,12 @@ import { ChevronDown, Grid2X2, Heart, Home, MapPin, Menu, Moon, Search, Shopping
 import api from '../api/axios'
 import { useAuth } from '../context/auth'
 import { Badge, Button, Drawer, Modal, Toast } from './ui'
+import { imageDimensionsByPath } from '../data/products'
+import { useCart } from '../context/CartContext'
+import { useWishlist } from '../context/WishlistContext'
 
 function flattenCategories(categories = []) {
   return categories.flatMap((category) => [category, ...flattenCategories(category.children)])
-}
-
-function readCount(storageKey, quantityKey) {
-  try {
-    const entries = JSON.parse(localStorage.getItem(storageKey) || '[]')
-    if (!Array.isArray(entries)) return 0
-    return entries.reduce((total, item) => total + (quantityKey ? Number(item.quantity || item.qty || 1) : 1), 0)
-  } catch {
-    return 0
-  }
 }
 
 function CategoryTree({ categories, onSelect }) {
@@ -28,6 +21,8 @@ function CategoryTree({ categories, onSelect }) {
 
 function Navbar() {
   const { user, logout } = useAuth()
+  const { count: cartCount } = useCart()
+  const { count: wishlistCount } = useWishlist()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [categories, setCategories] = useState([])
@@ -47,7 +42,6 @@ function Navbar() {
   const [categoryError, setCategoryError] = useState('')
   const [compact, setCompact] = useState(() => window.scrollY > 28)
   const [theme, setTheme] = useState(() => localStorage.getItem('nexoraTheme') || 'dark')
-  const [counts, setCounts] = useState({ cart: 0, wishlist: 0 })
   const [toast, setToast] = useState('')
   const flatCategories = useMemo(() => flattenCategories(categories), [categories])
 
@@ -65,8 +59,8 @@ function Navbar() {
       return undefined
     }
     const timer = window.setTimeout(() => {
-      api.get('/search/suggest', { params: { q: term } })
-        .then(({ data }) => setSuggestions(data))
+      api.get('/products', { params: { keyword: term, limit: 8 } })
+        .then(({ data }) => setSuggestions({ products: data.products || [], categories: [], brands: [] }))
         .catch(() => setSuggestions({ products: [], categories: [], brands: [] }))
     }, 250)
     return () => window.clearTimeout(timer)
@@ -83,16 +77,6 @@ function Navbar() {
     return () => window.removeEventListener('scroll', updateScroll)
   }, [])
 
-  useEffect(() => {
-    const refreshCounts = () => setCounts({ cart: readCount('nexoraCart', true), wishlist: readCount('nexoraWishlist', false) })
-    refreshCounts()
-    window.addEventListener('storage', refreshCounts)
-    window.addEventListener('nexora-storage', refreshCounts)
-    return () => {
-      window.removeEventListener('storage', refreshCounts)
-      window.removeEventListener('nexora-storage', refreshCounts)
-    }
-  }, [])
 
   const handleLogout = () => {
     logout()
@@ -219,7 +203,11 @@ function Navbar() {
             {suggestionsOpen && (keyword.trim().length >= 2 || recentSearches.length > 0) && <div className="search-suggestions" id="header-search-suggestions" role="listbox">
               {keyword.trim().length >= 2 ? <>
                 {suggestionItems.map((suggestion, index) => <button type="button" role="option" aria-selected={index === suggestionIndex} className={index === suggestionIndex ? 'is-active' : ''} key={`${suggestion.type}-${suggestion.label}`} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(suggestion)}>
-                  {suggestion.type === 'product' ? <><img src={suggestion.item.images?.[0]} alt="" /><span>{suggestion.label}</span><small>Product</small></> : <><Search size={15} /><span>{suggestion.label}</span><small>{suggestion.type}</small></>}
+                  {suggestion.type === 'product' ? (() => {
+                    const image = suggestion.item.images?.[0]
+                    const dimensions = imageDimensionsByPath[image] || { width: 386, height: 518 }
+                    return <><img src={image} alt={suggestion.item.name} width={dimensions.width} height={dimensions.height} loading="lazy" style={{ objectPosition: suggestion.item.imageFocus || '50% 50%', maxWidth: `${dimensions.width * 1.5}px` }} /><span>{suggestion.label}</span><small>Product</small></>
+                  })() : <><Search size={15} /><span>{suggestion.label}</span><small>{suggestion.type}</small></>}
                 </button>)}
                 {!suggestionItems.length && <p className="suggestion-empty">No quick matches. Press Enter to search.</p>}
                 <button className="suggestion-submit" type="submit">Search all results for “{keyword.trim()}”</button>
@@ -230,11 +218,11 @@ function Navbar() {
             </div>}
           </form>
           <div className="header-actions">
-            <Link className="header-icon-link wishlist-link" to="/wishlist" aria-label={`Wishlist, ${counts.wishlist} items`}>
-              <Heart size={21} /><span>Wishlist</span><Badge count={counts.wishlist} />
+            <Link className="header-icon-link wishlist-link" to="/wishlist" aria-label={`Wishlist, ${wishlistCount} items`}>
+              <Heart size={21} /><span>Wishlist</span><Badge count={wishlistCount} />
             </Link>
-            <Link className="header-icon-link cart-link" to="/cart" aria-label={`Cart, ${counts.cart} items`}>
-              <ShoppingBag size={21} /><span>Cart</span><Badge count={counts.cart} />
+            <Link className="header-icon-link cart-link" to="/cart" aria-label={`Cart, ${cartCount} items`}>
+              <ShoppingBag size={21} /><span>Cart</span><Badge count={cartCount} />
             </Link>
             <button className="icon-button theme-toggle" type="button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
@@ -272,8 +260,8 @@ function Navbar() {
         <NavLink to="/" end><Home size={19} /><span>Home</span></NavLink>
         <button type="button" onClick={showCategories}><Grid2X2 size={19} /><span>Categories</span></button>
         <button type="button" onClick={focusSearch}><Search size={19} /><span>Search</span></button>
-        <NavLink to="/cart"><span className="mobile-tab-icon"><ShoppingBag size={19} /><Badge count={counts.cart} /></span><span>Cart</span></NavLink>
-        <NavLink to={user ? '/account' : '/login'}><UserRound size={19} /><span>Account</span></NavLink>
+        <NavLink to="/cart"><span className="mobile-tab-icon"><ShoppingBag size={19} /><Badge count={cartCount} /></span><span>Cart</span></NavLink>
+        <NavLink to={user ? '/profile' : '/login'}><UserRound size={19} /><span>Profile</span></NavLink>
       </nav>
       <Toast message={toast} onClose={() => setToast('')} />
     </>
