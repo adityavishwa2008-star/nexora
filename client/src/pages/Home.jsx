@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import ProductCard from '../components/ProductCard'
-import { ProductGridSkeleton } from '../components/ui'
+import { ApiErrorState, ProductGridSkeleton } from '../components/ui'
 import { imageDimensionsByPath } from '../data/products'
 
 const heroImage = '/images/products/layered-cross-chain.jpg'
@@ -17,6 +17,7 @@ function Home() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
   const heroDimensions = imageDimensionsByPath[heroImage]
 
   useEffect(() => {
@@ -35,7 +36,7 @@ function Home() {
       })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [])
+  }, [retry])
 
   return (
     <>
@@ -83,7 +84,7 @@ function Home() {
             <h2>Featured products</h2>
           </div>
         </div>
-        {loading ? <ProductGridSkeleton count={3} /> : error ? <p className="form-error" role="alert">{error}</p> : products.length ? (
+        {loading ? <ProductGridSkeleton count={3} /> : error ? <ApiErrorState message={error} onRetry={() => { setError(''); setLoading(true); setRetry((value) => value + 1) }} /> : products.length ? (
           <div className="product-grid">{products.map((product) => <ProductCard product={product} key={product._id} />)}</div>
         ) : <p className="status-message">No products are available yet.</p>}
       </section>

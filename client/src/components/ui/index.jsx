@@ -74,6 +74,13 @@ export function Toast({ message, onClose, duration = 3200 }) {
   return <div className="ui-toast" role="status" aria-live="polite">{message}<button type="button" className="icon-button" aria-label="Dismiss notification" onClick={onClose}>×</button></div>
 }
 
+export function ApiErrorState({ message = 'Unable to load this section.', onRetry }) {
+  return <div className="empty-state api-error-state" role="alert">
+    <p className="form-error">{message}</p>
+    {onRetry && <Button type="button" onClick={onRetry}>Retry</Button>}
+  </div>
+}
+
 export function Skeleton({ className = '', style, ...props }) {
   return <span className={`ui-skeleton ${className}`.trim()} aria-hidden="true" style={style} {...props} />
 }

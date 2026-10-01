@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { useCart } from '../context/CartContext'
-import { Button, PriceTag, QuantityStepper, Toast } from '../components/ui'
+import { ApiErrorState, Button, PriceTag, QuantityStepper, Toast } from '../components/ui'
 
 function Cart() {
   const { cart, loading, error, setQty, remove } = useCart()
@@ -17,7 +17,7 @@ function Cart() {
   return <section className="container page-section local-list-page">
     <p className="eyebrow">Your bag</p><h1>Cart</h1>
     {error && <p className="form-error" role="alert">{error}</p>}
-    {loading ? <p className="status-message">Loading your cart...</p> : !rows.length ? <div className="empty-state"><p className="status-message">Your cart is waiting for its first good find.</p><Link className="button" to="/shop">Explore the collection</Link></div> : <div className="local-list-layout"><div className="local-list-items">{rows.map(({ product, qty }) => <article className="local-list-item" key={product._id}>
+    {error ? <ApiErrorState message={error} onRetry={() => window.location.reload()} /> : loading ? <p className="status-message">Loading your cart...</p> : !rows.length ? <div className="empty-state"><p className="status-message">Your cart is waiting for its first good find.</p><Link className="button" to="/shop">Explore the collection</Link></div> : <div className="local-list-layout"><div className="local-list-items">{rows.map(({ product, qty }) => <article className="local-list-item" key={product._id}>
       <img src={product.images?.[0]} alt={product.name} onError={(event) => { event.currentTarget.style.visibility = 'hidden' }} />
       <div className="local-list-item-copy"><p className="eyebrow">{product.category}</p><h2><Link to={`/products/${product._id}`}>{product.name}</Link></h2><PriceTag price={product.discountPrice ?? product.price} mrp={product.discountPrice ? product.price : undefined} /></div>
       <QuantityStepper value={qty} max={Math.max(1, product.stock)} onChange={(value) => update(() => setQty(product._id, value), 'Cart updated.')} /><button className="icon-button" type="button" aria-label={`Remove ${product.name}`} onClick={() => update(() => remove(product._id), 'Removed from cart.')}><Trash2 size={17} /></button>
