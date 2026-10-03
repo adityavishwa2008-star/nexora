@@ -11,6 +11,8 @@ const writableFields = [
   'mrp',
   'stock',
   'category',
+  'subcategory',
+  'collections',
   'categoryRef',
   'brand',
   'colors',
@@ -59,10 +61,18 @@ const validatePayload = (body, partial = false) => {
     return 'Name, description, price, and category are required';
   }
 
-  for (const field of ['name', 'slug', 'description', 'category', 'brand']) {
+  for (const field of ['name', 'slug', 'description', 'category', 'subcategory', 'brand']) {
     if (body[field] !== undefined && (typeof body[field] !== 'string' || !body[field].trim())) {
       return `${field} must be a non-empty string`;
     }
+  }
+
+  if (body.subcategory !== undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(body.subcategory.trim())) {
+    return 'subcategory must be a valid slug';
+  }
+
+  if (body.collections !== undefined && (!Array.isArray(body.collections) || body.collections.some((value) => typeof value !== 'string' || !value.trim()))) {
+    return 'collections must be an array of non-empty strings';
   }
 
   if (body.price !== undefined && (typeof body.price !== 'number' || !Number.isFinite(body.price) || body.price < 0)) {
@@ -153,18 +163,19 @@ const parseBoolean = (value, name) => {
 
 const buildProductFilter = async (query) => {
   const {
-    keyword = '', category, brand, minPrice, maxPrice, rating, minDiscount,
+    keyword = '', search = '', category, subcategory, collection, brand, minPrice, maxPrice, rating, minDiscount,
     inStock, includeOutOfStock, colors, sizes, freeDelivery, drops, onSale,
   } = query;
-  if (typeof keyword !== 'string' || (category !== undefined && typeof category !== 'string')) {
-    const error = new Error('Keyword and category must be strings');
+  if (typeof keyword !== 'string' || typeof search !== 'string' || (category !== undefined && typeof category !== 'string') || (subcategory !== undefined && typeof subcategory !== 'string') || (collection !== undefined && typeof collection !== 'string')) {
+    const error = new Error('Search, category, subcategory, and collection filters must be strings');
     error.status = 400;
     throw error;
   }
 
   const filter = {};
-  if (keyword.trim()) {
-    const expression = new RegExp(escapeRegex(keyword.trim()), 'i');
+  const searchTerm = (search || keyword).trim();
+  if (searchTerm) {
+    const expression = new RegExp(escapeRegex(searchTerm), 'i');
     filter.$or = [{ name: expression }, { description: expression }, { brand: expression }];
   }
 
@@ -188,6 +199,8 @@ const buildProductFilter = async (query) => {
     }
   }
 
+  if (subcategory?.trim()) filter.subcategory = subcategory.trim().toLowerCase();
+
   const brands = listValues(brand);
   if (brands.length) filter.brand = { $in: brands.map((value) => new RegExp(`^${escapeRegex(value)}$`, 'i')) };
 
@@ -206,6 +219,13 @@ const buildProductFilter = async (query) => {
       throw error;
     }
     filter.price = price;
+  }
+
+  const collectionSlug = collection?.trim().toLowerCase();
+  if (collectionSlug === 'under-499') {
+    filter.price = { ...(filter.price || {}), $lte: Math.min(filter.price?.$lte ?? 499, 499) };
+  } else if (collectionSlug && !['new-drops', 'best-sellers'].includes(collectionSlug)) {
+    filter.collections = collectionSlug;
   }
 
   if (rating !== undefined) {
@@ -242,6 +262,7 @@ const buildProductFilter = async (query) => {
   if (deliveryOnly !== undefined) filter.freeDelivery = deliveryOnly;
   const dropsOnly = parseBoolean(drops, 'drops');
   if (dropsOnly !== undefined) filter.drops = dropsOnly;
+  if (collectionSlug === 'new-drops') filter.drops = true;
 
   for (const [field, rawValue] of [['colors', colors], ['sizes', sizes]]) {
     const values = listValues(rawValue);
@@ -272,11 +293,13 @@ export const getProducts = async (req, res, next) => {
   try {
     const {
       keyword = '',
-      sort = 'newest',
+      collection = '',
+      sort: requestedSort = 'newest',
       page: pageValue = '1',
       limit: limitValue = '12',
     } = req.query;
 
+    const sort = collection === 'best-sellers' ? 'best_sellers' : requestedSort;
     const page = Number(pageValue);
     const requestedLimit = Number(limitValue);
     const limit = Math.min(requestedLimit, 50);

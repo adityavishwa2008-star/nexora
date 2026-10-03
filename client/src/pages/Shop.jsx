@@ -4,6 +4,7 @@ import { List, SlidersHorizontal, X } from 'lucide-react'
 import api from '../api/axios'
 import ProductCard from '../components/ProductCard'
 import { Breadcrumbs, Button, Drawer, Pagination, ProductGridSkeleton } from '../components/ui'
+import { specialCollections } from '../data/categories'
 
 const sortOptions = [
   ['featured', 'Featured'], ['price_asc', 'Price: low to high'], ['price_desc', 'Price: high to low'],
@@ -24,10 +25,12 @@ function FilterGroup({ title, children, defaultOpen = true }) {
   return <details className="catalogue-filter-group" open={defaultOpen}><summary>{title}</summary><div className="catalogue-filter-content">{children}</div></details>
 }
 
-function CategoryOptions({ categories, selected, onSelect, level = 0 }) {
-  return <ul className="catalogue-category-tree">{categories.map((category) => <li key={category._id} style={{ '--category-level': level }}>
-    <label><input type="checkbox" checked={selected === category.slug} onChange={() => onSelect(selected === category.slug ? '' : category.slug)} /><span>{category.name}</span></label>
-    {category.children?.length > 0 && <CategoryOptions categories={category.children} selected={selected} onSelect={onSelect} level={level + 1} />}
+function CategoryOptions({ categories, selectedCategory, selectedSubcategory, onSelectCategory, onSelectSubcategory }) {
+  return <ul className="catalogue-category-tree">{categories.map((category) => <li key={category.slug}>
+    <label><input type="checkbox" checked={selectedCategory === category.slug && !selectedSubcategory} onChange={() => onSelectCategory(selectedCategory === category.slug && !selectedSubcategory ? '' : category.slug)} /><span>{category.name}</span></label>
+    {category.children?.length > 0 && <ul>{category.children.map((subcategory) => <li key={subcategory.slug}>
+      <label><input type="checkbox" checked={selectedSubcategory === subcategory.slug} onChange={() => onSelectSubcategory(selectedSubcategory === subcategory.slug ? '' : subcategory.slug, category.slug)} /><span>{subcategory.name}</span></label>
+    </li>)}</ul>}
   </li>)}</ul>
 }
 
@@ -64,6 +67,8 @@ function Shop() {
   const routeCategory = slug || ''
   const keyword = searchParams.get('q') || searchParams.get('keyword') || ''
   const categorySlug = routeCategory || searchParams.get('category') || ''
+  const subcategorySlug = searchParams.get('subcategory') || ''
+  const collectionSlug = searchParams.get('collection') || ''
   const sort = searchParams.get('sort') || 'featured'
   const page = Math.max(1, Number(searchParams.get('page') || 1))
   const limit = Math.min(48, Math.max(12, Number(searchParams.get('limit') || 24)))
@@ -82,8 +87,9 @@ function Shop() {
   const loading = loadedFingerprint !== requestFingerprint
 
   const flatCategories = useMemo(() => flatten(categories), [categories])
-  const currentCategory = flatCategories.find((item) => item.slug === categorySlug)
-  const pageTitle = keyword ? `Search results for “${keyword}”` : currentCategory?.name || (categorySlug ? categorySlug.replaceAll('-', ' ') : 'Shop NEXORA')
+  const currentCategory = flatCategories.find((item) => item.slug === subcategorySlug) || flatCategories.find((item) => item.slug === categorySlug)
+  const collectionName = specialCollections.find((item) => item.slug === collectionSlug)?.name
+  const pageTitle = keyword ? `Search results for “${keyword}”` : currentCategory?.name || collectionName || (categorySlug ? categorySlug.replaceAll('-', ' ') : 'Shop NEXORA')
   const categoryDescription = currentCategory ? `Shop our ${currentCategory.name.toLowerCase()} collection, selected for everyday use.` : ''
 
   const updateParams = (updates, resetPage = true) => {
@@ -150,11 +156,11 @@ function Shop() {
     return () => { active = false }
   }, [queryString, requestFingerprint, page, routeCategory, limit])
 
-  const activeFilters = [...(categorySlug ? [['category', currentCategory?.name || categorySlug]] : []), ...(keyword ? [[searchParams.has('q') ? 'q' : 'keyword', `“${keyword}”`]] : []), ...brands.map((value) => ['brand', value]), ...colors.map((value) => ['colors', value]), ...sizes.map((value) => ['sizes', value]), ...(rating ? [['rating', `${rating} stars & up`]] : []), ...(minDiscount ? [['minDiscount', `${minDiscount}%+ off`]] : []), ...(searchParams.has('minPrice') ? [['minPrice', `Min ${searchParams.get('minPrice')}`]] : []), ...(searchParams.has('maxPrice') ? [['maxPrice', `Max ${searchParams.get('maxPrice')}`]] : []), ...(freeDelivery ? [['freeDelivery', 'Free delivery']] : []), ...(drops ? [['drops', 'Drops only']] : []), ...(includeOutOfStock ? [['includeOutOfStock', 'Including out of stock']] : [])]
+  const activeFilters = [...(categorySlug ? [['category', flatCategories.find((item) => item.slug === categorySlug)?.name || categorySlug]] : []), ...(subcategorySlug ? [['subcategory', currentCategory?.name || subcategorySlug]] : []), ...(collectionSlug ? [['collection', collectionName || collectionSlug]] : []), ...(keyword ? [[searchParams.has('q') ? 'q' : 'keyword', `“${keyword}”`]] : []), ...brands.map((value) => ['brand', value]), ...colors.map((value) => ['colors', value]), ...sizes.map((value) => ['sizes', value]), ...(rating ? [['rating', `${rating} stars & up`]] : []), ...(minDiscount ? [['minDiscount', `${minDiscount}%+ off`]] : []), ...(searchParams.has('minPrice') ? [['minPrice', `Min ${searchParams.get('minPrice')}`]] : []), ...(searchParams.has('maxPrice') ? [['maxPrice', `Max ${searchParams.get('maxPrice')}`]] : []), ...(freeDelivery ? [['freeDelivery', 'Free delivery']] : []), ...(drops ? [['drops', 'Drops only']] : []), ...(includeOutOfStock ? [['includeOutOfStock', 'Including out of stock']] : [])]
   const clearFilter = ([key, value]) => {
     if (['brand', 'colors', 'sizes'].includes(key)) toggleParam(key, value)
     else if (key === 'category' && routeCategory) navigate('/shop')
-    else if (key === 'category') updateParams({ category: '' })
+    else if (key === 'category') updateParams({ category: '', subcategory: '' })
     else updateParams({ [key]: '' })
   }
   const clearAll = () => {
@@ -168,8 +174,9 @@ function Shop() {
 
   const sidebar = <>
     <FilterGroup title="Category" defaultOpen>
-      <CategoryOptions categories={categories} selected={categorySlug} onSelect={(value) => { if (routeCategory) window.location.assign(value ? `/c/${value}` : '/shop'); else updateParams({ category: value }) }} />
+      <CategoryOptions categories={categories} selectedCategory={categorySlug} selectedSubcategory={subcategorySlug} onSelectCategory={(value) => { if (routeCategory) navigate(value ? `/shop?category=${value}` : '/shop'); else updateParams({ category: value, subcategory: '' }) }} onSelectSubcategory={(value, parentSlug) => { if (routeCategory) navigate(value ? `/shop?category=${parentSlug}&subcategory=${value}` : `/shop?category=${parentSlug}`); else updateParams({ category: parentSlug, subcategory: value }) }} />
     </FilterGroup>
+    <FilterGroup title="Special Collections"><div className="catalogue-collections">{specialCollections.map((collection) => <label className="catalogue-check-row" key={collection.slug}><input type="checkbox" checked={collectionSlug === collection.slug} onChange={() => updateParams({ collection: collectionSlug === collection.slug ? '' : collection.slug })} /><span>{collection.name}</span></label>)}</div></FilterGroup>
     <FilterGroup title="Price" defaultOpen>
       <div className="price-range-slider"><input aria-label="Minimum price slider" type="range" min={facets.price.min || 0} max={facets.price.max || 1000} value={currentPriceDraft.min || facets.price.min || 0} onChange={(event) => setPriceDraft({ ...currentPriceDraft, query: queryString, min: event.target.value })} /><input aria-label="Maximum price slider" type="range" min={facets.price.min || 0} max={facets.price.max || 1000} value={currentPriceDraft.max || facets.price.max || 1000} onChange={(event) => setPriceDraft({ ...currentPriceDraft, query: queryString, max: event.target.value })} /></div>
       <div className="price-input-row"><label><span className="sr-only">Minimum price</span><input type="number" min="0" placeholder="Min" value={currentPriceDraft.min} onChange={(event) => setPriceDraft({ ...currentPriceDraft, query: queryString, min: event.target.value })} /></label><span>to</span><label><span className="sr-only">Maximum price</span><input type="number" min="0" placeholder="Max" value={currentPriceDraft.max} onChange={(event) => setPriceDraft({ ...currentPriceDraft, query: queryString, max: event.target.value })} /></label></div>
@@ -186,7 +193,7 @@ function Shop() {
   return <section className="container catalogue-page page-section">
     <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Shop', to: '/shop' }, ...(currentCategory ? [{ label: currentCategory.name }] : keyword ? [{ label: 'Search' }] : [])]} />
     {currentCategory && <header className="category-banner"><div><p className="eyebrow">NEXORA collection</p><h1>{currentCategory.name}</h1><p>{categoryDescription}</p></div>{currentCategory.image && <img src={currentCategory.image} alt="" />}</header>}
-    {!currentCategory && <header className="catalogue-heading"><p className="eyebrow">{keyword ? 'Search the collection' : 'The full collection'}</p><h1>{pageTitle}</h1><p>{keyword ? 'Explore matching products and related categories.' : 'Browse practical objects and considered technology.'}</p></header>}
+    {!currentCategory && <header className="catalogue-heading"><p className="eyebrow">{keyword ? 'Search the collection' : collectionName ? 'NEXORA collection' : 'The full collection'}</p><h1>{pageTitle}</h1><p>{keyword ? 'Explore matching products and related categories.' : collectionName ? `Explore the ${collectionName} edit.` : 'Browse practical objects and considered technology.'}</p></header>}
     <div className="catalogue-results-header"><p aria-live="polite">{total ? `${resultStart}-${resultEnd} of ${total} results${keyword ? ` for “${keyword}”` : ''}` : keyword ? `0 results for “${keyword}”` : 'No matching results'}</p><div className="catalogue-toolbar">
       <button className="filters-open-button" type="button" onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={16} /> Filters{total ? ` (${total})` : ''}</button>
       <label className="catalogue-sort"><span>Sort by</span><select aria-label="Sort products" value={sort} onChange={(event) => updateParams({ sort: event.target.value })}>{sortOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -198,7 +205,7 @@ function Shop() {
         {loading ? <ProductGridSkeleton count={limit > 24 ? 8 : 6} /> : error ? <div className="empty-state"><h2>Products unavailable</h2><p className="form-error" role="alert">{error}</p><Button type="button" onClick={() => setRetry((current) => current + 1)}>Try again</Button></div> : pageProducts.length ? <>
           <div className={`catalogue-product-grid ${view === 'list' ? 'is-list-view' : ''}`}>{pageProducts.map((product) => <ProductCard product={product} key={product._id} onSale={Boolean(product.mrp > product.price)} />)}</div>
           <div className="catalogue-bottom-controls"><label>Show <select value={limit} onChange={(event) => updateParams({ limit: event.target.value })}><option value="12">12</option><option value="24">24</option><option value="48">48</option></select> per page</label><Pagination page={page} pages={pages} onChange={changePage} />{page < pages && <Button variant="secondary" type="button" onClick={() => { updateParams({ page: page + 1 }, false) }}>Load more</Button>}</div>
-        </> : <div className="catalogue-empty empty-state"><p className="eyebrow">Nothing in this aisle</p><h2>No products match those filters</h2><p>Remove a filter or try a wider search to see more of the collection.</p><Button type="button" onClick={clearAll}>Clear all filters</Button><div className="empty-category-links">{flatCategories.slice(0, 4).map((item) => <Link key={item._id} to={`/c/${item.slug}`}>{item.name}</Link>)}</div></div>}
+        </> : <div className="catalogue-empty empty-state"><p className="eyebrow">Nothing in this aisle</p><h2>{categorySlug || subcategorySlug ? 'We’re curating this category' : 'No products match those filters'}</h2><p>{categorySlug || subcategorySlug ? `There are no products in ${currentCategory?.name || categorySlug.replaceAll('-', ' ')} yet. Check back soon for the first pieces.` : 'Remove a filter or try a wider search to see more of the collection.'}</p><Button type="button" onClick={clearAll}>Clear all filters</Button><div className="empty-category-links">{categories.slice(0, 4).map((item) => <Link key={item.slug} to={`/shop?category=${item.slug}`}>{item.name}</Link>)}</div></div>}
       </div>
     </div>
     <Drawer open={filtersOpen} title="Filters" side="bottom" onClose={() => setFiltersOpen(false)}><div className="mobile-filter-content">{sidebar}</div><div className="mobile-filter-apply"><span>{total} results</span><Button type="button" onClick={() => setFiltersOpen(false)}>Apply</Button></div></Drawer>

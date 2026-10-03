@@ -1,22 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronDown, Grid2X2, Heart, Home, MapPin, Menu, Moon, Search, ShoppingBag, Sun, Tag, UserRound } from 'lucide-react'
+import { ChevronDown, CircleDot, Gem, Glasses, Grid2X2, Headphones, Heart, Home, Link2, MapPin, Menu, Moon, Scissors, Search, ShoppingBag, Sparkles, Sun, Tag, UserRound, Watch } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/auth'
 import { Badge, Button, Drawer, Modal, Toast } from './ui'
+import { categoryTree, specialCollections } from '../data/categories'
 import { imageDimensionsByPath } from '../data/products'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
 
-function flattenCategories(categories = []) {
-  return categories.flatMap((category) => [category, ...flattenCategories(category.children)])
+function flattenCategories(categories = [], parentSlug = '') {
+  return categories.flatMap((category) => [
+    { ...category, parentSlug },
+    ...flattenCategories(category.children, parentSlug || category.slug),
+  ])
 }
 
+const categoryIcons = { Link2, Gem, Sparkles, Watch, CircleDot, ShoppingBag, Scissors, Glasses, Headphones }
+
 function CategoryTree({ categories, onSelect }) {
-  return <ul className="category-tree">{categories.map((category) => <li key={category._id}>
-    <button type="button" onClick={() => onSelect(category)}>{category.name}</button>
-    {category.children?.length > 0 && <CategoryTree categories={category.children} onSelect={onSelect} />}
-  </li>)}</ul>
+  return <ul className="category-tree">{categories.map((category) => {
+    const Icon = categoryIcons[category.icon] || Tag
+    return <li key={category.slug}>
+      <details className="drawer-category">
+        <summary><Icon size={17} aria-hidden="true" /><span>{category.name}</span><ChevronDown size={15} aria-hidden="true" /></summary>
+        <div className="drawer-category-options">
+          <button type="button" onClick={() => onSelect(category)}>{`Shop all ${category.name}`}</button>
+          {category.children.map((subcategory) => <button type="button" key={subcategory.slug} onClick={() => onSelect(subcategory, category)}>{subcategory.name}</button>)}
+        </div>
+      </details>
+    </li>
+  })}</ul>
 }
 
 function Navbar() {
@@ -25,8 +39,7 @@ function Navbar() {
   const { count: wishlistCount } = useWishlist()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [categories, setCategories] = useState([])
-  const [category, setCategory] = useState(searchParams.get('category') || '')
+  const [category, setCategory] = useState(searchParams.get('subcategory') || searchParams.get('category') || '')
   const [keyword, setKeyword] = useState('')
   const [suggestions, setSuggestions] = useState({ products: [], categories: [], brands: [] })
   const [recentSearches, setRecentSearches] = useState(() => {
@@ -39,19 +52,10 @@ function Navbar() {
   const [locationOpen, setLocationOpen] = useState(false)
   const [categoryOpen, setCategoryOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [categoryError, setCategoryError] = useState('')
   const [compact, setCompact] = useState(() => window.scrollY > 28)
   const [theme, setTheme] = useState(() => localStorage.getItem('nexoraTheme') || 'dark')
   const [toast, setToast] = useState('')
-  const flatCategories = useMemo(() => flattenCategories(categories), [categories])
-
-  const loadCategories = () => {
-    api.get('/categories')
-      .then(({ data }) => setCategories(data))
-      .catch((error) => setCategoryError(error.response?.data?.message || 'Could not load categories.'))
-  }
-
-  useEffect(() => { loadCategories() }, [])
+  const flatCategories = useMemo(() => flattenCategories(categoryTree), [])
 
   useEffect(() => {
     const term = keyword.trim()
@@ -88,7 +92,9 @@ function Navbar() {
     const term = keyword.trim()
     if (term) rememberSearch(term)
     if (category) {
-      const params = new URLSearchParams({ category })
+      const selected = flatCategories.find((item) => item.slug === category)
+      const params = new URLSearchParams({ category: selected?.parentSlug || category })
+      if (selected?.parentSlug) params.set('subcategory', category)
       if (term) params.set('keyword', term)
       navigate(`/shop?${params}`)
     } else {
@@ -158,16 +164,22 @@ function Navbar() {
     setLocationOpen(false)
   }
 
-  const chooseCategory = (selectedCategory) => {
-    navigate(`/c/${selectedCategory.slug}`)
+  const chooseCategory = (selectedCategory, parentCategory) => {
+    const params = new URLSearchParams({ category: parentCategory?.slug || selectedCategory.slug })
+    if (parentCategory) params.set('subcategory', selectedCategory.slug)
+    navigate(`/shop?${params}`)
     setCategoryOpen(false)
     setMobileOpen(false)
+  }
+
+  const chooseCollection = (collection) => {
+    navigate(`/shop?collection=${encodeURIComponent(collection.slug)}`)
+    setCategoryOpen(false)
   }
 
   const showCategories = () => {
     setCategoryOpen(true)
     setMobileOpen(false)
-    if (!categories.length && !categoryError) loadCategories()
   }
 
   const focusSearch = () => {
@@ -175,7 +187,7 @@ function Navbar() {
     window.setTimeout(() => document.getElementById('header-keyword')?.focus(), 0)
   }
 
-  const categoryLinks = flatCategories.slice(0, 4)
+  const categoryLinks = categoryTree.slice(0, 4)
 
   return (
     <>
@@ -195,7 +207,10 @@ function Navbar() {
             <label className="sr-only" htmlFor="header-category">Search category</label>
             <select id="header-category" value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Search by category">
               <option value="">All</option>
-              {flatCategories.map((item) => <option key={item._id} value={item.slug}>{item.name}</option>)}
+              {categoryTree.map((item) => <optgroup key={item.slug} label={item.name}>
+                <option value={item.slug}>{`All ${item.name}`}</option>
+                {item.children.map((subcategory) => <option key={subcategory.slug} value={subcategory.slug}>{subcategory.name}</option>)}
+              </optgroup>)}
             </select>
             <label className="sr-only" htmlFor="header-keyword">Search products</label>
             <input id="header-keyword" value={keyword} onFocus={() => setSuggestionsOpen(true)} onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 140)} onKeyDown={handleSearchKeyDown} onChange={(event) => { setKeyword(event.target.value); setSuggestionIndex(-1); setSuggestionsOpen(true) }} placeholder="Search products, brands and more" role="combobox" aria-autocomplete="list" aria-expanded={suggestionsOpen} aria-controls="header-search-suggestions" />
@@ -248,7 +263,8 @@ function Navbar() {
       </header>
 
       <Drawer open={categoryOpen} title="Shop by category" onClose={() => setCategoryOpen(false)}>
-        {categoryError ? <div className="drawer-state"><p role="alert">{categoryError}</p><Button type="button" onClick={() => { setCategoryError(''); loadCategories() }}>Retry</Button></div> : categories.length ? <CategoryTree categories={categories} onSelect={chooseCategory} /> : <p className="status-message">Loading categories…</p>}
+        <CategoryTree categories={categoryTree} onSelect={chooseCategory} />
+        <div className="drawer-collections"><h3>Special Collections</h3>{specialCollections.map((collection) => <button type="button" key={collection.slug} onClick={() => chooseCollection(collection)}><Tag size={15} aria-hidden="true" />{collection.name}</button>)}</div>
       </Drawer>
       <Drawer open={mobileOpen} title="NEXORA" onClose={() => setMobileOpen(false)}>
         <div className="mobile-drawer-links"><Link to="/" onClick={() => setMobileOpen(false)}>Home</Link><button type="button" onClick={showCategories}>Categories</button><Link to="/shop" onClick={() => setMobileOpen(false)}>Shop</Link><Link to="/shop?sort=rating" onClick={() => setMobileOpen(false)}>Trending</Link><Link to="/shop?minDiscount=10" onClick={() => setMobileOpen(false)}>Deals</Link>{user ? <button type="button" onClick={handleLogout}>Logout</button> : <><Link to="/login" onClick={() => setMobileOpen(false)}>Log in</Link><Link to="/register" onClick={() => setMobileOpen(false)}>Create account</Link></>}</div>

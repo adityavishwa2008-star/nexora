@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Category from '../models/Category.js';
 import Product from '../models/Product.js';
+import { specialCollections } from '../../client/src/data/categories.js';
 
 const slugify = (value) => value
   .trim()
@@ -9,6 +10,10 @@ const slugify = (value) => value
   .replace(/^-|-$/g, '');
 
 const validId = (value) => /^[a-f\d]{24}$/i.test(value);
+
+export const getCollections = (req, res) => {
+  res.json(specialCollections);
+};
 
 const respondError = (error, res, next) => {
   if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError || error.code === 11000) {
@@ -37,15 +42,17 @@ const validateBody = (body, partial = false) => {
   if (body.name !== undefined && (typeof body.name !== 'string' || !body.name.trim())) return 'Name must be a non-empty string';
   if (body.slug !== undefined && (typeof body.slug !== 'string' || !slugify(body.slug))) return 'Slug must contain letters or numbers';
   if (body.parent !== undefined && body.parent !== null && typeof body.parent !== 'string') return 'Parent must be a category id or null';
+  if (body.icon !== undefined && typeof body.icon !== 'string') return 'Icon must be a string';
   if (body.image !== undefined && typeof body.image !== 'string') return 'Image must be a URL string';
   if (body.order !== undefined && (!Number.isInteger(body.order) || body.order < 0)) return 'Order must be a non-negative integer';
+  if (body.sortOrder !== undefined && (!Number.isInteger(body.sortOrder) || body.sortOrder < 0)) return 'Sort order must be a non-negative integer';
   if (body.active !== undefined && typeof body.active !== 'boolean') return 'Active must be a boolean';
   return null;
 };
 
 export const getCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find({ active: true }).sort({ order: 1, name: 1 });
+    const categories = await Category.find({ active: true }).sort({ sortOrder: 1, order: 1, name: 1 });
     res.json(buildTree(categories));
   } catch (error) {
     next(error);
@@ -65,13 +72,14 @@ export const createCategory = async (req, res, next) => {
       res.status(400);
       throw new Error('Parent category was not found');
     }
-
     const category = await Category.create({
       name: req.body.name,
       slug: slugify(req.body.slug || req.body.name),
       parent: parentId,
+      icon: req.body.icon,
       image: req.body.image,
       order: req.body.order,
+      sortOrder: req.body.sortOrder,
       active: req.body.active,
     });
     res.status(201).json(category);
@@ -92,7 +100,7 @@ export const updateCategory = async (req, res, next) => {
   }
 
   const updates = {};
-  for (const field of ['name', 'image', 'order', 'active']) {
+  for (const field of ['name', 'icon', 'image', 'order', 'sortOrder', 'active']) {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
   }
   if (req.body.slug !== undefined) updates.slug = slugify(req.body.slug);

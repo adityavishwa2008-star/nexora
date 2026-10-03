@@ -2,6 +2,11 @@ const beltImage = '/images/products/gothic-cross-belt.jpg'
 const chainImage = '/images/products/layered-cross-chain.jpg'
 const pendantImage = '/images/products/cross-pendant-chain.jpg'
 const retroImage = '/images/products/retro-mp3-player.jpg'
+const chainBraceletImage = '/images/products/silver-curb-chain-bracelet.jpg'
+const gothicBraceletImage = '/images/products/gothic-studded-bracelet-set.jpg'
+const hairAccessoryImage = '/images/products/gothic-skull-hair-clip.jpg'
+const shoulderBagImage = '/images/products/black-crescent-shoulder-bag.jpg'
+const skullRingImage = '/images/products/ring.jpg'
 
 export const products = [
   {
@@ -109,6 +114,71 @@ export const products = [
     imageFocus: '50% 50%',
     description: 'Shiny wired earbuds with throwback energy. Plug in and press play.',
   },
+  {
+    id: 'silver-curb-chain-bracelet',
+    name: 'Silver Curb Chain Bracelet',
+    category: 'bracelets',
+    brand: 'NEXORA',
+    price: 699,
+    mrp: 999,
+    stock: 40,
+    image: chainBraceletImage,
+    imageFocus: '50% 45%',
+    collections: ['streetwear', 'minimal'],
+    description: 'A polished curb-link bracelet with an easy everyday fit.',
+  },
+  {
+    id: 'gothic-studded-bracelet-set',
+    name: 'Gothic Studded Bracelet Set',
+    category: 'bracelets',
+    brand: 'NEXORA',
+    price: 899,
+    mrp: 1299,
+    stock: 35,
+    image: gothicBraceletImage,
+    imageFocus: '50% 50%',
+    collections: ['gothic', 'streetwear'],
+    description: 'A dark mixed-texture stack of adjustable studded and chain bracelets.',
+  },
+  {
+    id: 'gothic-skull-hair-clip',
+    name: 'Gothic Skull Hair Clip',
+    category: 'hair-accessories',
+    brand: 'NEXORA',
+    price: 999,
+    mrp: 1499,
+    stock: 25,
+    image: hairAccessoryImage,
+    imageFocus: '50% 50%',
+    collections: ['gothic'],
+    description: 'A statement hair ornament with silver branches, dark beads, and skull details.',
+  },
+  {
+    id: 'black-crescent-shoulder-bag',
+    name: 'Black Crescent Shoulder Bag',
+    category: 'bags',
+    brand: 'NEXORA',
+    price: 1499,
+    mrp: 1999,
+    stock: 30,
+    image: shoulderBagImage,
+    imageFocus: '50% 50%',
+    collections: ['y2k', 'streetwear'],
+    description: 'A compact black crescent bag with a long shoulder strap and relaxed shape.',
+  },
+  {
+    id: 'gothic-skull-signet-ring',
+    name: 'Gothic Skull Signet Ring',
+    category: 'rings',
+    brand: 'NEXORA',
+    price: 899,
+    mrp: 1299,
+    stock: 35,
+    image: skullRingImage,
+    imageFocus: '50% 50%',
+    collections: ['gothic', 'streetwear'],
+    description: 'A dark sculpted skull signet ring with a bold silver finish.',
+  },
 ]
 
 export const categories = [
@@ -122,4 +192,9 @@ export const imageDimensionsByPath = {
   [chainImage]: { width: 386, height: 518 },
   [pendantImage]: { width: 447, height: 447 },
   [retroImage]: { width: 387, height: 516 },
+  [chainBraceletImage]: { width: 554, height: 554 },
+  [gothicBraceletImage]: { width: 447, height: 447 },
+  [hairAccessoryImage]: { width: 480, height: 640 },
+  [shoulderBagImage]: { width: 393, height: 508 },
+  [skullRingImage]: { width: 612, height: 408 },
 }

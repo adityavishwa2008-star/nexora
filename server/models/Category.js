@@ -20,9 +20,18 @@ const categorySchema = new mongoose.Schema(
       ref: 'Category',
       default: null,
     },
+    icon: {
+      type: String,
+      trim: true,
+    },
     image: {
       type: String,
       trim: true,
+    },
+    sortOrder: {
+      type: Number,
+      min: 0,
+      default: 0,
     },
     order: {
       type: Number,
@@ -37,7 +46,7 @@ const categorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-categorySchema.index({ parent: 1, order: 1 });
+categorySchema.index({ parent: 1, sortOrder: 1 });
 
 const Category = mongoose.model('Category', categorySchema);
 

@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CircleDot, Gem, Glasses, Headphones, Link2, Scissors, ShoppingBag, Sparkles, Watch } from 'lucide-react'
 import api from '../api/axios'
 import ProductCard from '../components/ProductCard'
 import { ApiErrorState, ProductGridSkeleton } from '../components/ui'
+import { categoryTree } from '../data/categories'
 import { imageDimensionsByPath } from '../data/products'
 
 const heroImage = '/images/products/layered-cross-chain.jpg'
-const categoryImageAlt = {
-  belts: 'Gothic Cross Buckle Leather Belt',
-  'chains-necklaces': 'Silver Cross Pendant Ball Chain',
-  'retro-tech': 'Retro Silver MP3 Player with Earbuds',
-}
+const categoryIcons = { Link2, Gem, Sparkles, Watch, CircleDot, ShoppingBag, Scissors, Glasses, Headphones }
 
 function Home() {
-  const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,13 +19,9 @@ function Home() {
 
   useEffect(() => {
     let active = true
-    Promise.all([
-      api.get('/categories'),
-      api.get('/products', { params: { limit: 3, sort: 'rating' } }),
-    ])
-      .then(([categoryResponse, productResponse]) => {
+    api.get('/products', { params: { limit: 3, sort: 'rating' } })
+      .then((productResponse) => {
         if (!active) return
-        setCategories(categoryResponse.data)
         setProducts(productResponse.data.products)
       })
       .catch((requestError) => {
@@ -64,16 +57,18 @@ function Home() {
           <Link to="/shop" className="text-link">View all products →</Link>
         </div>
         <div className="category-grid">
-          {categories.map((category, index) => (
-            <Link className="category-card" to={`/c/${category.slug}`} key={category._id}>
+          {categoryTree.map((category, index) => {
+            const Icon = categoryIcons[category.icon]
+            return <Link className="category-card" to={`/shop?category=${category.slug}`} key={category.slug}>
               {category.image && (() => {
                 const dimensions = imageDimensionsByPath[category.image] || { width: 386, height: 518 }
-                return <img className="category-card-image" src={category.image} alt={categoryImageAlt[category.slug] || category.name} width={dimensions.width} height={dimensions.height} loading="lazy" style={{ maxWidth: `${dimensions.width * 1.5}px` }} />
+                return <img className="category-card-image" src={category.image} alt={category.name} width={dimensions.width} height={dimensions.height} loading="lazy" style={{ maxWidth: `${dimensions.width * 1.5}px` }} />
               })()}
+              {!category.image && <span className="category-card-icon"><Icon size={30} aria-hidden="true" /></span>}
               <span>0{index + 1}</span>
               <strong>{category.name}</strong>
             </Link>
-          ))}
+          })}
         </div>
       </section>
 
